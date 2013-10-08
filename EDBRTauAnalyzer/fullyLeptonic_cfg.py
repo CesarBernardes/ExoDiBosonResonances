@@ -3,19 +3,33 @@ import FWCore.ParameterSet.Config as cms
 process = cms.Process("Demo")
 
 process.load("FWCore.MessageService.MessageLogger_cfi")
-process.MessageLogger.cerr.FwkReport.reportEvery = 10000
+process.MessageLogger.cerr.FwkReport.reportEvery = 500
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1000) )
+#process.load("ExoDiBosonResonances.EDBRTauAnalyzer.BulkG_M2000_cff")
+#process.load("ExoDiBosonResonances.EDBRTauAnalyzer.BulkGM1000_V2_cff")
+process.load("ExoDiBosonResonances.EDBRTauAnalyzer.BulkGM1500_cff")
+#process.load("ExoDiBosonResonances.EDBRTauAnalyzer.WJetsPt50To70_cff")
+#process.load("ExoDiBosonResonances.EDBRTauAnalyzer.WJetsPt70To100_cff")
+#process.load("ExoDiBosonResonances.EDBRTauAnalyzer.WJetsPt100_cff")
+#process.load("ExoDiBosonResonances.EDBRTauAnalyzer.DYJetsToLL_PtZ-70To100_cff")
+#process.load("ExoDiBosonResonances.EDBRTauAnalyzer.DYJetsToLL_PtZ-100_cff")
+#process.load("ExoDiBosonResonances.EDBRTauAnalyzer.ZZ_cff")
+#process.load("ExoDiBosonResonances.EDBRTauAnalyzer.WZ_cff")
+#process.load("ExoDiBosonResonances.EDBRTauAnalyzer.WW_cff")
 
-process.source = cms.Source("PoolSource",
-    # replace 'myfile.root' with the source file you want to use
-    fileNames = cms.untracked.vstring(
-        'root://osg-se.sprace.org.br//store/user/caber/BulkG_m1000_TauTau_v2/EDBR_PATtuple_edbr_zz_tautaujj_13082013/1b325ddfb984c14533be7920e22baeef/BulkG_m1000_TauTau_v2__aspiezia-BulkG_m1000_TauTau_v2-3664d28163503ca8171ba37083c39fc9__USER_3_1_zKJ.root',
-    )
-)
 
-process.demo = cms.EDAnalyzer('FullyLeptonicAnalyzer'
-)
+#process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(10000) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
+
+#process.source = cms.Source("PoolSource",
+#    # replace 'myfile.root' with the source file you want to use
+#    fileNames = cms.untracked.vstring(
+#        'root://osg-se.sprace.org.br//store/user/caber/BulkG_m1000_TauTau_v2/EDBR_PATtuple_edbr_zz_tautaujj_13082013/1b325ddfb984c14533be7920e22baeef/BulkG_m1000_TauTau_v2__aspiezia-BulkG_m1000_TauTau_v2-3664d28163503ca8171ba37083c39fc9__USER_3_1_zKJ.root',
+#    )
+#)
+
+#process.demo = cms.EDAnalyzer('FullyLeptonicAnalyzer'
+#)
 
 
 process.badEventFilter = cms.EDFilter("HLTHighLevel",
@@ -36,12 +50,47 @@ process.badEventFilter = cms.EDFilter("HLTHighLevel",
                                       throw = cms.bool(True)   # throw exception on unknown path names
                                       )
 
+#### Adding HEEP and modified isolation
+### Boosted electrons isolation
+### Remake the HEEP ID with no isolation cuts
+print "Adding HEEP and modified isolation..."
+
+process.load("RecoLocalCalo.EcalRecAlgos.EcalSeverityLevelESProducer_cfi")
+from SHarper.HEEPAnalyzer.HEEPSelectionCuts_cfi import *
+
+# And now redo the PAT electrons with Mathias' module
+process.heepPatElectronsV2 = cms.EDProducer("HEEPAttStatusToPAT",
+                                          eleLabel = cms.InputTag("patElectronsWithTrigger"),
+                                          barrelCuts = cms.PSet(heepBarrelCuts),
+                                          endcapCuts = cms.PSet(heepEndcapCuts),
+                                          applyRhoCorrToEleIsol = cms.bool(True),
+                                          eleIsolEffectiveAreas = cms.PSet (heepEffectiveAreas),
+                                          eleRhoCorrLabel = cms.InputTag("kt6PFJets","rho"),
+                                          verticesLabel = cms.InputTag("offlinePrimaryVerticesWithBS"),
+                                          )
+
+
+process.demo = cms.EDAnalyzer('FullyLeptonicAnalyzer',
+        electrons = cms.untracked.InputTag("heepPatElectronsV2"),           
+)
+
 process.TFileService = cms.Service("TFileService",
-        fileName = cms.string("output.root")
+#        fileName = cms.string("output_M2000_07102013.root")
+#        fileName = cms.string("output_M1000_07102013.root")
+        fileName = cms.string("output_M1500_07102013.root")
+#        fileName = cms.string("output_WJetsPt50To70_07102013.root")
+#        fileName = cms.string("output_WJetsPt70To100_07102013.root")
+#        fileName = cms.string("output_WJetsPt100_07102013.root")
+#        fileName = cms.string("output_DYJetsToLL_PtZ-70To100_07102013.root")
+#        fileName = cms.string("output_DYJetsToLL_PtZ-100_07102013.root")
+#        fileName = cms.string("output_ZZ_07102013.root")
+#        fileName = cms.string("output_WZ_07102013.root")
+#        fileName = cms.string("output_WW_07102013.root")    
+#        fileName = cms.string("output_test.root") 
 )
 
 
-process.p = cms.Path(process.badEventFilter + process.demo)
+process.p = cms.Path(process.badEventFilter + process.heepPatElectronsV2*process.demo)
 #process.p = cms.Path(process.demo)
 
 process.options   = cms.untracked.PSet( wantSummary = cms.untracked.bool(True) )
